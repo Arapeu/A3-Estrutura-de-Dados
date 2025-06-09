@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Fila de Impressão com Prioridades</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin: 20px 0;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card-header {
+            border-radius: 15px 15px 0 0 !important;
+            border: none;
+        }
+        
+        .btn {
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .document-item {
+            border-radius: 12px;
+            border-left: 5px solid;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+        
+        .document-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .urgent {
+            border-left-color: #dc3545 !important;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%);
+        }
+        
+        .normal {
+            border-left-color: #28a745 !important;
+            background: linear-gradient(135deg, #f8fff8 0%, #e6ffe6 100%);
+        }
+        
+        .badge {
+            border-radius: 20px;
+            font-size: 0.75rem;
+            padding: 0.5rem 1rem;
+        }
+        
+        .header-title {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #6c757d;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .alert {
+            border-radius: 12px;
+            border: none;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="container main-container p-4">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <h1 class="display-4 fw-bold header-title mb-3">
+                    <i class="bi bi-printer-fill me-3"></i>
+                    Sistema de Fila de Impressão
+                </h1>
+                <p class="lead text-muted">Gerenciamento inteligente com prioridades usando Min Heap</p>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card stats-card">
+                        <div class="card-body text-center">
+                            <i class="bi bi-files display-6 mb-2"></i>
+                            <h3 class="mb-0" id="totalDocuments">0</h3>
+                            <small>Documentos na Fila</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card stats-card">
+                        <div class="card-body text-center">
+                            <i class="bi bi-exclamation-triangle-fill display-6 mb-2"></i>
+                            <h3 class="mb-0" id="urgentDocuments">0</h3>
+                            <small>Documentos Urgentes</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card stats-card">
+                        <div class="card-body text-center">
+                            <i class="bi bi-check-circle-fill display-6 mb-2"></i>
+                            <h3 class="mb-0" id="printedDocuments">0</h3>
+                            <small>Documentos Impressos</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Painel de Controle -->
+                <div class="col-lg-4 mb-4">
+                    <!-- Adicionar Documento -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-plus-circle me-2"></i>
+                                Adicionar Documento
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="documentForm">
+                                <div class="mb-3">
+                                    <label for="documentName" class="form-label">Nome do Documento</label>
+                                    <input type="text" class="form-control" id="documentName" 
+                                           placeholder="Ex: Relatório de Vendas" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="documentContent" class="form-label">Conteúdo</label>
+                                    <textarea class="form-control" id="documentContent" rows="3" 
+                                              placeholder="Descreva o conteúdo do documento..." required></textarea>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="documentPriority" class="form-label">Prioridade</label>
+                                    <select class="form-select" id="documentPriority" required>
+                                        <option value="">Selecione a prioridade</option>
+                                        <option value="1">🔴 Urgente</option>
+                                        <option value="10">🟢 Normal</option>
+                                    </select>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-plus-lg me-2"></i>
+                                    Adicionar à Fila
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Controles de Impressão -->
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-printer me-2"></i>
+                                Controles de Impressão
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <button id="printNext" class="btn btn-success w-100 mb-3">
+                                <i class="bi bi-play-fill me-2"></i>
+                                Imprimir Próximo
+                            </button>
+                            
+                            <button id="printAll" class="btn btn-outline-success w-100 mb-3">
+                                <i class="bi bi-play-circle me-2"></i>
+                                Imprimir Todos
+                            </button>
+                            
+                            <button id="showInfo" class="btn btn-outline-info w-100" data-bs-toggle="modal" data-bs-target="#infoModal">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Informações do Sistema
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fila de Impressão -->
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-list-ul me-2"></i>
+                                Fila de Impressão
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="queueContainer">
+                                <div class="empty-state">
+                                    <i class="bi bi-printer"></i>
+                                    <h4>A fila está vazia</h4>
+                                    <p>Adicione documentos para começar</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Último Documento Impresso -->
+                    <div id="lastPrintedContainer" class="card mt-4" style="display: none;">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">
+                                <i class="bi bi-check-circle me-2"></i>
+                                Último Documento Impresso
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="lastPrintedContent"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Informações -->
+    <div class="modal fade" id="infoModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Informações do Sistema
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <h6><i class="bi bi-gear-fill me-2"></i>Sistema de Fila de Impressão com Prioridades</h6>
+                        <p class="mb-0">Este sistema utiliza uma estrutura de dados <strong>Min Heap</strong> para gerenciar a fila de impressão de forma eficiente.</p>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-cpu me-2"></i>Características Técnicas:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-check-circle-fill text-success me-2"></i>Estrutura de dados: Min Heap</li>
+                                <li><i class="bi bi-check-circle-fill text-success me-2"></i>Complexidade: O(log n)</li>
+                                <li><i class="bi bi-check-circle-fill text-success me-2"></i>Prioridade por urgência</li>
+                                <li><i class="bi bi-check-circle-fill text-success me-2"></i>FIFO para mesma prioridade</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-flag me-2"></i>Níveis de Prioridade:</h6>
+                            <ul class="list-unstyled">
+                                <li><span class="badge bg-danger me-2">🔴 Urgente (1)</span> Máxima prioridade</li>
+                                <li><span class="badge bg-success me-2">🟢 Normal (10)</span> Prioridade padrão</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        O sistema garante que documentos urgentes sejam sempre processados primeiro, 
+                        mantendo a ordem de chegada (FIFO) para documentos de mesma prioridade.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Implementação do Min Heap (mantendo a lógica original)
+        class MinHeap {
+            constructor() {
+                // Inicializa o heap como um array vazio e um contador de IDs
+                this.heap = [];
+                this.idContador = 0;
+            }
+            // Retorna o índice do pai de um nó
+            obterIndicePai(indice) {
+                return Math.floor((indice - 1) / 2);
+            }
+            // Retorna o índice do filho à esquerda de um nó
+            obterIndiceFilhoEsquerda(indice) {
+                return 2 * indice + 1;
+            }
+            // Retorna o índice do filho à direita de um nó
+            obterIndiceFilhoDireita(indice) {
+                return 2 * indice + 2;
+            }
+            // Verifica se um nó tem pai
+            temPai(indice) {
+                return this.obterIndicePai(indice) >= 0;
+            }
+            // Verifica se um nó tem filho à esquerda
+            temFilhoEsquerda(indice) {
+                return this.obterIndiceFilhoEsquerda(indice) < this.heap.length;
+            }
+            // Verifica se um nó tem filho à direita
+            temFilhoDireita(indice) {
+                return this.obterIndiceFilhoDireita(indice) < this.heap.length;
+            }
+            // Retorna o valor do pai de um nó
+            pai(indice) {
+                return this.heap[this.obterIndicePai(indice)];
+            }
+            // Retorna o valor do filho à esquerda de um nó
+            filhoEsquerda(indice) {
+                return this.heap[this.obterIndiceFilhoEsquerda(indice)];
+            }
+            // Retorna o valor do filho à direita de um nó
+            filhoDireita(indice) {
+                return this.heap[this.obterIndiceFilhoDireita(indice)];
+            }
+            // Troca dois elementos no heap
+            trocar(indice1, indice2) {
+                const temp = this.heap[indice1];
+                this.heap[indice1] = this.heap[indice2];
+                this.heap[indice2] = temp;
+            }
+            // Verifica se o heap está vazio
+            estaVazio() {
+                return this.heap.length === 0;
+            }
+            // Retorna o menor elemento do heap sem removê-lo
+            espiar() {
+                if (this.estaVazio()) {
+                    return null;
+                }
+                return this.heap[0];
+            }
+            // Adiciona um novo elemento ao heap
+            adicionar(item) {
+                item.id = this.idContador++;// Atribui um ID único ao item
+                this.heap.push(item);// Adiciona o item ao final do heap
+                this.heapificarParaCima();// Ajusta o heap para manter a propriedade de Min Heap
+                return item;
+            }
+            // Ajusta o heap para cima
+            heapificarParaCima() {
+                let indice = this.heap.length - 1;
+
+                while (
+                    this.temPai(indice) &&
+                    (this.heap[indice].prioridade < this.pai(indice).prioridade ||
+                        (this.heap[indice].prioridade === this.pai(indice).prioridade &&
+                            this.heap[indice].id < this.pai(indice).id))
+                ) {
+                    const indicePai = this.obterIndicePai(indice);
+                    this.trocar(indicePai, indice);
+                    indice = indicePai;
+                }
+            }
+            // Remove o menor elemento do heap
+            remover() {
+                if (this.estaVazio()) {
+                    return null;
+                }
+
+                const item = this.heap[0];// Obtém o menor elemento
+                this.heap[0] = this.heap[this.heap.length - 1];// Substitui pelo último elemento
+                this.heap.pop();// Remove o último elemento
+
+                if (!this.estaVazio()) {
+                    this.heapificarParaBaixo();// Ajusta o heap para manter a propriedade de Min Heap
+                }
+
+                return item;
+            }
+            // Ajusta o heap para baixo
+            heapificarParaBaixo() {
+                let indice = 0;
+
+                while (this.temFilhoEsquerda(indice)) {
+                    let indiceMenorFilho = this.obterIndiceFilhoEsquerda(indice);
+
+                    if (
+                        this.temFilhoDireita(indice) &&
+                        (this.filhoDireita(indice).prioridade < this.filhoEsquerda(indice).prioridade ||
+                            (this.filhoDireita(indice).prioridade === this.filhoEsquerda(indice).prioridade &&
+                                this.filhoDireita(indice).id < this.filhoEsquerda(indice).id))
+                    ) {
+                        indiceMenorFilho = this.obterIndiceFilhoDireita(indice);
+                    }
+
+                    if (
+                        this.heap[indice].prioridade < this.heap[indiceMenorFilho].prioridade ||
+                        (this.heap[indice].prioridade === this.heap[indiceMenorFilho].prioridade &&
+                            this.heap[indice].id < this.heap[indiceMenorFilho].id)
+                    ) {
+                        break;
+                    }
+
+                    this.trocar(indice, indiceMenorFilho);
+                    indice = indiceMenorFilho;
+                }
+            }
+            // Retorna o tamanho do heap
+            tamanho() {
+                return this.heap.length;
+            }
+            // Retorna uma cópia do heap
+            obterHeap() {
+                return [...this.heap];
+            }
+        }
+
+        // Classe Documento
+        class Documento {
+            constructor(nome, prioridade, conteudo) {
+                this.nome = nome;
+                this.prioridade = prioridade;
+                this.conteudo = conteudo;
+                this.id = 0;
+                this.horaEnvio = new Date();
+            }
+        }
+
+        // Classe FilaImpressao
+        class FilaImpressao {
+            constructor() {
+                // Inicializa a fila de impressão com um Min Heap                
+                this.fila = new MinHeap();
+            }
+            // Adiciona um documento à fila
+            adicionarDocumento(nome, prioridade, conteudo) {
+                const doc = new Documento(nome, prioridade, conteudo);
+                this.fila.adicionar(doc);
+                return doc;
+            }
+            // Imprime o próximo documento na fila
+            imprimirProximo() {
+                if (this.fila.estaVazio()) {
+                    return null;
+                }
+
+                const doc = this.fila.remover();
+                return doc;
+            }
+            // Retorna uma visualização da fila de impressão
+            visualizarFila() {
+                if (this.fila.estaVazio()) {
+                    return [];
+                }
+
+                const heap = this.fila.obterHeap();
+                const heapTemporario = new MinHeap();
+                const arrayTemporario = [];
+                // Copia os documentos para um heap temporário
+                heap.forEach(doc => heapTemporario.adicionar({ ...doc }));
+                // Remove os documentos do heap temporário para criar um array ordenado
+                while (!heapTemporario.estaVazio()) {
+                    arrayTemporario.push(heapTemporario.remover());
+                }
+
+                return arrayTemporario;
+            }
+            // Retorna o tamanho da fila
+            tamanho() {
+                return this.fila.tamanho();
+            }
+        }
+
+        // Inicialização do sistema
+        const filaImpressao = new FilaImpressao();
+        let documentosImpressos = 0;
+
+        // Adiciona documentos de exemplo
+        filaImpressao.adicionarDocumento("Relatório Mensal", 10, "Relatório de vendas do mês de maio.");
+        filaImpressao.adicionarDocumento("Contrato Urgente", 1, "Contrato que precisa ser assinado hoje.");
+
+        // Elementos DOM
+        const documentForm = document.getElementById('documentForm');
+        const queueContainer = document.getElementById('queueContainer');
+        const lastPrintedContainer = document.getElementById('lastPrintedContainer');
+        const lastPrintedContent = document.getElementById('lastPrintedContent');
+        const printNextBtn = document.getElementById('printNext');
+        const printAllBtn = document.getElementById('printAll');
+
+        // Event Listeners
+        documentForm.addEventListener('submit', adicionarDocumento);
+        printNextBtn.addEventListener('click', imprimirProximo);
+        printAllBtn.addEventListener('click', imprimirTodos);
+
+        function adicionarDocumento(e) {
+            e.preventDefault();
+
+            const nome = document.getElementById('documentName').value;
+            const conteudo = document.getElementById('documentContent').value;
+            const prioridade = parseInt(document.getElementById('documentPriority').value);
+
+            if (!nome || !conteudo || !prioridade) {
+                alert('Por favor, preencha todos os campos.');
+                return;
+            }
+
+            filaImpressao.adicionarDocumento(nome, prioridade, conteudo);
+            
+            // Limpa o formulário
+            documentForm.reset();
+            
+            // Atualiza a interface
+            atualizarInterface();
+            
+            // Feedback visual
+            mostrarNotificacao('Documento adicionado com sucesso!', 'success');
+        }
+        // Função para imprimir o próximo documento na fila
+        function imprimirProximo() {
+            // Remove o próximo documento da fila de impressão
+            const doc = filaImpressao.imprimirProximo();
+            if (doc) {
+                // Incrementa o contador de documentos impressos                
+                documentosImpressos++;
+                // Exibe o último documento impresso
+                mostrarUltimoImpresso(doc);
+                // Atualiza a interface
+                atualizarInterface();
+                // Exibe uma notificação de sucesso
+                mostrarNotificacao(`Documento "${doc.nome}" impresso com sucesso!`, 'success');
+            } else {
+                // Se não houver documentos na fila, exibe uma notificação de aviso
+                mostrarNotificacao('A fila está vazia!', 'warning');
+            }
+        }
+        // Função para imprimir todos os documentos na fila
+        function imprimirTodos() {
+            // Verifica se a fila está vazia
+            if (filaImpressao.tamanho() === 0) {
+                // Exibe uma notificação informando que a fila está vazia
+                mostrarNotificacao('A fila está vazia!', 'warning');
+                return;
+            }
+            // Obtém o número total de documentos na fila
+            const totalDocumentos = filaImpressao.tamanho();
+            let ultimoDoc = null;
+            // Imprime todos os documentos na fila
+            while (filaImpressao.tamanho() > 0) {
+                ultimoDoc = filaImpressao.imprimirProximo();
+                if (ultimoDoc) {
+                    // Incrementa o contador de documentos impressos
+                    documentosImpressos++;
+                }
+            }
+            // Exibe o último documento impresso na interface
+            if (ultimoDoc) {
+                mostrarUltimoImpresso(ultimoDoc);
+            }
+
+            atualizarInterface();
+            mostrarNotificacao(`${totalDocumentos} documento(s) impresso(s) com sucesso!`, 'success');
+        }
+        // Função para exibir o último documento impresso na interface
+        function mostrarUltimoImpresso(doc) {
+            // Define classes e textos baseados na prioridade do documento
+            const priorityClass = doc.prioridade === 1 ? 'urgent' : 'normal';
+            const priorityText = doc.prioridade === 1 ? '🔴 URGENTE' : '🟢 Normal';
+            const priorityBadge = doc.prioridade === 1 ? 'bg-danger' : 'bg-success';
+            // Atualiza o conteúdo do último documento impresso na interface
+            lastPrintedContent.innerHTML = `
+                <div class="document-item ${priorityClass} p-3 fade-in">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-2">
+                                <h6 class="mb-0 me-2">${doc.nome}</h6>
+                                <span class="badge ${priorityBadge}">${priorityText}</span>
+                            </div>
+                            <p class="text-muted mb-2">${doc.conteudo}</p>
+                            <small class="text-muted">
+                                <i class="bi bi-clock me-1"></i>
+                                Enviado às ${doc.horaEnvio.toLocaleTimeString()}
+                            </small>
+                        </div>
+                        <div class="text-end">
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Exibe o container do último documento impresso
+            lastPrintedContainer.style.display = 'block';
+        }
+        // Função para atualizar a interface com os dados da fila de impressão
+        function atualizarInterface() {
+            // Obtém os documentos na fila e suas estatísticas
+            const documentos = filaImpressao.visualizarFila();
+            const totalDocumentos = filaImpressao.tamanho();
+            const documentosUrgentes = documentos.filter(doc => doc.prioridade === 1).length;
+
+            // Atualiza estatísticas
+            document.getElementById('totalDocuments').textContent = totalDocumentos;
+            document.getElementById('urgentDocuments').textContent = documentosUrgentes;
+            document.getElementById('printedDocuments').textContent = documentosImpressos;
+
+            // Atualiza botões
+            printNextBtn.disabled = totalDocumentos === 0;
+            printAllBtn.disabled = totalDocumentos === 0;
+
+            // Atualiza fila
+            if (totalDocumentos === 0) {
+                queueContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-printer"></i>
+                        <h4>A fila está vazia</h4>
+                        <p>Adicione documentos para começar</p>
+                    </div>
+                `;
+            } else {
+                // Cria o HTML para os documentos na fila
+                let html = '';
+                documentos.forEach((doc, index) => {
+                    const priorityClass = doc.prioridade === 1 ? 'urgent' : 'normal';
+                    const priorityText = doc.prioridade === 1 ? '🔴 URGENTE' : '🟢 Normal';
+                    const priorityBadge = doc.prioridade === 1 ? 'bg-danger' : 'bg-success';
+
+                    html += `
+                        <div class="document-item ${priorityClass} p-3 fade-in">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <h6 class="mb-0 me-2">${doc.nome}</h6>
+                                        <span class="badge ${priorityBadge}">${priorityText}</span>
+                                    </div>
+                                    <p class="text-muted mb-2">${doc.conteudo}</p>
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock me-1"></i>
+                                        Enviado às ${doc.horaEnvio.toLocaleTimeString()}
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-secondary">#${index + 1}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                queueContainer.innerHTML = html;
+            }
+        }
+        // Função para exibir notificações na interface
+        function mostrarNotificacao(mensagem, tipo) {
+            // Remove notificações existentes
+            const existingAlert = document.querySelector('.alert-notification');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+            // Define a classe da notificação com base no tipo
+            const alertClass = tipo === 'success' ? 'alert-success' : 
+                             tipo === 'warning' ? 'alert-warning' : 'alert-info';
+            // Cria o elemento de notificação
+            const alert = document.createElement('div');
+            alert.className = `alert ${alertClass} alert-notification position-fixed top-0 start-50 translate-middle-x mt-3 fade-in`;
+            alert.style.zIndex = '9999';
+            alert.innerHTML = `
+                <i class="bi bi-${tipo === 'success' ? 'check-circle' : tipo === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                ${mensagem}
+            `;
+            // Adiciona a notificação ao corpo do documento
+            document.body.appendChild(alert);
+
+            // Remove após 3 segundos
+            setTimeout(() => {
+                alert.remove();
+            }, 3000);
+        }
+
+        // Inicializa a interface
+        atualizarInterface();
+    </script>
+</body>
+</html>

@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Simulação de Cinema</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin: 20px auto;
+        }
+        
+        .header-custom {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .guiche-card {
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .guiche-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .guiche-ativo {
+            border-left: 5px solid #28a745;
+        }
+        
+        .guiche-pausado {
+            border-left: 5px solid #dc3545;
+        }
+        
+        .cliente-item {
+            margin: 5px 0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .cliente-regular { background: linear-gradient(135deg, #007bff, #0056b3); }
+        .cliente-idoso { background: linear-gradient(135deg, #6f42c1, #5a2d91); }
+        .cliente-estudante { background: linear-gradient(135deg, #17a2b8, #138496); }
+        .cliente-preferencial { background: linear-gradient(135deg, #fd7e14, #e55a00); }
+        
+        .log-container {
+            background: #343a40;
+            color: white;
+            max-height: 300px;
+            overflow-y: auto;
+            border-radius: 8px;
+        }
+        
+        .log-item {
+            padding: 8px 15px;
+            border-bottom: 1px solid #495057;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .log-item:last-child {
+            border-bottom: none;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .btn-custom {
+            border-radius: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-container">
+            <!-- Cabeçalho -->
+            <div class="header-custom">
+                <h1><i class="bi bi-camera-reels"></i> Sistema de Cinema</h1>
+                <p class="mb-0">Simulação de Filas de Atendimento</p>
+            </div>
+
+            <!-- Estatísticas -->
+            <div class="container-fluid p-4">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="card stats-card text-center">
+                            <div class="card-body">
+                                <h2 class="card-title" id="totalClientes">0</h2>
+                                <p class="card-text">Total de Clientes</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card text-center">
+                            <div class="card-body">
+                                <h2 class="card-title" id="guichesAtivos">4</h2>
+                                <p class="card-text">Guichês Ativos</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card text-center">
+                            <div class="card-body">
+                                <h2 class="card-title" id="clientesAtendidos">0</h2>
+                                <p class="card-text">Clientes Atendidos</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card text-center">
+                            <div class="card-body">
+                                <h2 class="card-title">30s</h2>
+                                <p class="card-text">Tempo Médio</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controles -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-gear"></i> Controles do Sistema</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Controles Gerais -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-3">
+                                <button class="btn btn-primary btn-custom w-100" onclick="adicionarClienteAleatorio()">
+                                    <i class="bi bi-person-plus"></i> Adicionar Cliente
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-success btn-custom w-100" onclick="adicionarMultiplosClientes()">
+                                    <i class="bi bi-people"></i> Adicionar 5 Clientes
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-info btn-custom w-100" onclick="simularCicloAtendimento()">
+                                    <i class="bi bi-arrow-clockwise"></i> Simular Ciclo Automático
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-warning btn-custom w-100" onclick="limparLog()">
+                                    <i class="bi bi-trash"></i> Limpar Log
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Controles Específicos -->
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Tipo de Cliente:</label>
+                                <div class="input-group">
+                                    <select class="form-select" id="tipoCliente">
+                                        <option value="Regular">Regular</option>
+                                        <option value="Idoso">Idoso</option>
+                                        <option value="Estudante">Estudante</option>
+                                        <option value="Preferencial">Preferencial</option>
+                                    </select>
+                                    <button class="btn btn-primary btn-custom" onclick="adicionarClienteEspecifico()">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Controle de Guichê:</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="idGuiche" min="1" max="4" value="1" placeholder="ID do Guichê">
+                                    <button class="btn btn-warning btn-custom" onclick="pausarGuiche()">
+                                        <i class="bi bi-pause"></i>
+                                    </button>
+                                    <button class="btn btn-success btn-custom" onclick="reativarGuiche()">
+                                        <i class="bi bi-play"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Atendimento Manual:</label>
+                                <button class="btn btn-info btn-custom w-100" onclick="atenderClienteEspecifico()">
+                                    <i class="bi bi-ticket"></i> Atender Cliente do Guichê
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Guichês -->
+                <div class="row g-3 mb-4" id="guichesContainer">
+                    <!-- Os guichês serão gerados dinamicamente pelo JavaScript -->
+                </div>
+
+                <!-- Log de Atividades -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-journal-text"></i> Log de Atividades</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="log-container" id="logContainer">
+                            <div class="log-item">Sistema iniciado com 4 guichês ativos.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Classe Cliente
+        class Cliente {
+            static proximoId = 1;
+            
+            constructor(tipo = "Regular") {
+                this.id = Cliente.proximoId++;
+                this.tipo = tipo;
+                this.horaChegada = Date.now();
+            }
+            // Obtém o ID do cliente
+            toString() {
+                return `Cliente #${this.id} (${this.tipo})`;
+            }
+        }
+
+        // Classe GuicheAtendimento
+        class GuicheAtendimento {
+            constructor(id, tempoMedioAtendimento) {
+                this.id = id;
+                this.fila = [];
+                this.ativo = true;
+                this.tempoMedioAtendimento = tempoMedioAtendimento;
+            }
+            // Obtém o ID do guichê
+            estaAtivo() {
+                return this.ativo;
+            }
+            // Define se o guichê está ativo ou em pausa
+            definirAtivo(ativo) {
+                this.ativo = ativo;
+            }
+            // Obtém o tamanho da fila de clientes do guichê
+            tamanhoFila() {
+                return this.fila.length;
+            }
+            // Adiciona um cliente à fila do guichê
+            adicionarCliente(cliente) {
+                this.fila.push(cliente);
+            }
+            // Atende o próximo cliente na fila
+            atenderProximoCliente() {
+                if (this.fila.length > 0) {
+                    return this.fila.shift();
+                }
+                return null;
+            }
+            // Obtém todos os clientes na fila
+            obterTodosClientes() {
+                return [...this.fila];
+            }
+            // Limpa a fila de clientes
+            limparFila() {
+                this.fila = [];
+            }
+        }
+
+        // Classe SistemaCinema
+        class SistemaCinema {
+            constructor(numGuiches, tempoMedioAtendimento) {
+                this.guiches = [];
+                this.clientesAtendidos = 0;
+                for (let i = 1; i <= numGuiches; i++) {
+                    this.guiches.push(new GuicheAtendimento(i, tempoMedioAtendimento));
+                }
+            }
+            // Adiciona um cliente ao guichê com a menor fila ativa
+            adicionarCliente(cliente) {
+                const guicheMenorFila = this.encontrarGuicheMenorFila();
+                if (guicheMenorFila) {
+                    guicheMenorFila.adicionarCliente(cliente);
+                    adicionarLog(`${cliente.toString()} adicionado ao Guichê #${guicheMenorFila.id}`);
+                    return true;
+                } else {
+                    adicionarLog(`Não há guichês ativos para adicionar ${cliente.toString()}`);
+                    return false;
+                }
+            }
+            // Encontra o guichê com a menor fila ativa
+            encontrarGuicheMenorFila() {
+                let menor = null;
+                let tamanhoMinimo = Infinity;
+                
+                for (const guiche of this.guiches) {
+                    if (guiche.estaAtivo() && guiche.tamanhoFila() < tamanhoMinimo) {
+                        tamanhoMinimo = guiche.tamanhoFila();
+                        menor = guiche;
+                    }
+                }
+                return menor;
+            }
+            // Pausa um guichê específico e redistribui seus clientes
+            pausarGuiche(idGuiche) {
+                for (const guiche of this.guiches) {
+                    if (guiche.id === idGuiche && guiche.estaAtivo()) {
+                        guiche.definirAtivo(false);
+                        const clientesParaRedistribuir = guiche.obterTodosClientes();
+                        guiche.limparFila();
+                        
+                        adicionarLog(`Guichê #${idGuiche} pausado. Redistribuindo ${clientesParaRedistribuir.length} clientes...`);
+                        
+                        for (const cliente of clientesParaRedistribuir) {
+                            const guicheDestino = this.encontrarGuicheMenorFila();
+                            if (guicheDestino) {
+                                guicheDestino.adicionarCliente(cliente);
+                                adicionarLog(`${cliente.toString()} movido para o Guichê #${guicheDestino.id}`);
+                            }
+                        }
+                        return true;
+                    }
+                }
+                adicionarLog(`Guichê #${idGuiche} não encontrado ou já está em pausa.`);
+                return false;
+            }
+            // Reativa um guichê específico
+            reativarGuiche(idGuiche) {
+                for (const guiche of this.guiches) {
+                    if (guiche.id === idGuiche && !guiche.estaAtivo()) {
+                        guiche.definirAtivo(true);
+                        adicionarLog(`Guichê #${idGuiche} reativado.`);
+                        return true;
+                    }
+                }
+                adicionarLog(`Guichê #${idGuiche} não encontrado ou já está ativo.`);
+                return false;
+            }
+            // Atende o próximo cliente de um guichê específico
+            atenderProximoCliente(idGuiche) {
+                for (const guiche of this.guiches) {
+                    if (guiche.id === idGuiche && guiche.estaAtivo()) {
+                        const clienteAtendido = guiche.atenderProximoCliente();
+                        if (clienteAtendido) {
+                            this.clientesAtendidos++;
+                            adicionarLog(`${clienteAtendido.toString()} foi atendido no Guichê #${idGuiche}`);
+                            return true;
+                        } else {
+                            adicionarLog(`Não há clientes na fila do Guichê #${idGuiche}`);
+                            return false;
+                        }
+                    }
+                }
+                adicionarLog(`Guichê #${idGuiche} não encontrado ou está em pausa.`);
+                return false;
+            }
+            // Simula um ciclo de atendimento automático
+            simularCicloAtendimento() {
+                let atendimentos = 0;
+                adicionarLog("🔄 Iniciando ciclo automático de atendimento...");
+                
+                for (const guiche of this.guiches) {
+                    if (guiche.estaAtivo() && guiche.tamanhoFila() > 0) {
+                        if (Math.random() < 0.4) { // 40% de chance de atender um cliente
+                            const clienteAtendido = guiche.atenderProximoCliente();
+                            this.clientesAtendidos++;
+                            adicionarLog(`✅ ${clienteAtendido.toString()} foi atendido no Guichê #${guiche.id}`);
+                            atendimentos++;
+                        }
+                    }
+                }
+                
+                if (atendimentos === 0) {
+                    adicionarLog("⚠️ Nenhum cliente foi atendido neste ciclo de simulação.");
+                } else {
+                    adicionarLog(`📊 Ciclo concluído: ${atendimentos} clientes atendidos.`);
+                }
+                return atendimentos;
+            }
+            // Obtém o total de clientes em todos os guichês
+            obterTotalClientes() {
+                return this.guiches.reduce((total, guiche) => total + guiche.tamanhoFila(), 0);
+            }
+            // Obtém o número de guichês ativos
+            obterGuichesAtivos() {
+                return this.guiches.filter(guiche => guiche.estaAtivo()).length;
+            }
+        }
+
+        // Variáveis globais
+        let sistema;
+        const tiposClientes = ["Regular", "Idoso", "Estudante", "Preferencial"];
+
+        // Inicializa o sistema
+        function inicializarSistema() {
+            sistema = new SistemaCinema(4, 30);
+            criarGuichesDOM();
+            atualizarInterface();
+        }
+
+        // Cria os elementos DOM dos guichês
+        function criarGuichesDOM() {
+            const container = document.getElementById('guichesContainer');
+            container.innerHTML = '';
+            // Cria os guichês dinamicamente
+            for (const guiche of sistema.guiches) {
+                const guicheElement = document.createElement('div');
+                guicheElement.className = 'col-md-6 col-lg-3';
+                // Define o HTML do guichê
+                guicheElement.innerHTML = `
+                    <div class="card guiche-card guiche-ativo" id="guiche-${guiche.id}">
+                        <div class="card-header text-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-shop"></i> Guichê #${guiche.id}
+                                <span class="badge bg-success ms-2" id="status-${guiche.id}">Ativo</span>
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                <i class="bi bi-people"></i> Fila de Clientes (<span id="count-${guiche.id}">0</span>)
+                            </h6>
+                            <div id="fila-${guiche.id}" style="min-height: 150px;">
+                                <div class="text-center text-muted py-3">
+                                    <i class="bi bi-inbox"></i><br>
+                                    Nenhum cliente na fila
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(guicheElement);
+            }
+        }
+
+        // Atualiza a interface com o estado atual do sistema
+        function atualizarInterface() {
+            // Atualiza estatísticas
+            document.getElementById('totalClientes').textContent = sistema.obterTotalClientes();
+            document.getElementById('guichesAtivos').textContent = sistema.obterGuichesAtivos();
+            document.getElementById('clientesAtendidos').textContent = sistema.clientesAtendidos;
+            
+            // Atualiza cada guichê
+            for (const guiche of sistema.guiches) {
+                atualizarGuicheDOM(guiche);
+            }
+        }
+
+        // Atualiza um guichê específico no DOM
+        function atualizarGuicheDOM(guiche) {
+            const guicheCard = document.getElementById(`guiche-${guiche.id}`);
+            const statusBadge = document.getElementById(`status-${guiche.id}`);
+            const countSpan = document.getElementById(`count-${guiche.id}`);
+            const filaContainer = document.getElementById(`fila-${guiche.id}`);
+            
+            // Atualiza status
+            if (guiche.estaAtivo()) {
+                guicheCard.className = 'card guiche-card guiche-ativo';
+                statusBadge.className = 'badge bg-success ms-2';
+                statusBadge.textContent = 'Ativo';
+            } else {
+                guicheCard.className = 'card guiche-card guiche-pausado';
+                statusBadge.className = 'badge bg-danger ms-2';
+                statusBadge.textContent = 'Em Pausa';
+            }
+            
+            // Atualiza contador
+            countSpan.textContent = guiche.tamanhoFila();
+            
+            // Atualiza fila de clientes
+            const clientes = guiche.obterTodosClientes();
+            if (clientes.length === 0) {
+                filaContainer.innerHTML = `
+                    <div class="text-center text-muted py-3">
+                        <i class="bi bi-inbox"></i><br>
+                        Nenhum cliente na fila
+                    </div>
+                `;
+            } else {
+                filaContainer.innerHTML = clientes.map(cliente => `
+                    <div class="cliente-item cliente-${cliente.tipo.toLowerCase()}">
+                        <span><i class="bi bi-person"></i> Cliente #${cliente.id}</span>
+                        <span class="badge bg-light text-dark">${cliente.tipo}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Adiciona uma mensagem ao log
+        function adicionarLog(mensagem) {
+            const logContainer = document.getElementById('logContainer');
+            const logItem = document.createElement('div');
+            logItem.className = 'log-item';
+            
+            const agora = new Date();
+            const timestamp = agora.toLocaleTimeString();
+            logItem.textContent = `[${timestamp}] ${mensagem}`;
+            
+            logContainer.appendChild(logItem);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Funções de controle
+        function adicionarClienteAleatorio() {
+            const tipoAleatorio = tiposClientes[Math.floor(Math.random() * tiposClientes.length)];
+            const cliente = new Cliente(tipoAleatorio);
+            sistema.adicionarCliente(cliente);
+            atualizarInterface();
+        }
+
+        function adicionarClienteEspecifico() {
+            const tipo = document.getElementById('tipoCliente').value;
+            const cliente = new Cliente(tipo);
+            sistema.adicionarCliente(cliente);
+            atualizarInterface();
+        }
+        // Adiciona múltiplos clientes aleatórios
+        function adicionarMultiplosClientes() {
+            for (let i = 0; i < 5; i++) {
+                // Seleciona um tipo aleatório de cliente
+                const tipoAleatorio = tiposClientes[Math.floor(Math.random() * tiposClientes.length)];
+                const cliente = new Cliente(tipoAleatorio);
+                sistema.adicionarCliente(cliente);
+            }
+            atualizarInterface();
+        }
+        // Pausa um guichê específico
+        function pausarGuiche() {
+            const id = parseInt(document.getElementById('idGuiche').value);
+            sistema.pausarGuiche(id);
+            atualizarInterface();
+        }
+        // Reativa um guichê específico
+        function reativarGuiche() {
+            const id = parseInt(document.getElementById('idGuiche').value);
+            sistema.reativarGuiche(id);
+            atualizarInterface();
+        }
+        // Atende o próximo cliente de um guichê específico
+        function atenderClienteEspecifico() {
+            const id = parseInt(document.getElementById('idGuiche').value);
+            sistema.atenderProximoCliente(id);
+            atualizarInterface();
+        }
+        // Simula um ciclo de atendimento automático
+        function simularCicloAtendimento() {
+            sistema.simularCicloAtendimento();
+            atualizarInterface();
+        }
+        // Limpa o log de atividades
+        function limparLog() {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML = '<div class="log-item">Log limpo.</div>';
+        }
+
+        // Inicializa o sistema quando a página carrega
+        window.addEventListener('load', inicializarSistema);
+
+        // Adiciona alguns clientes automaticamente para demonstração
+        setTimeout(() => {
+            for (let i = 0; i < 8; i++) {
+                adicionarClienteAleatorio();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
