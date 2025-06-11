@@ -260,7 +260,16 @@
                 this.id = Cliente.proximoId++;
                 this.tipo = tipo;
                 this.horaChegada = Date.now();
+                this.prioridade = this.definirPrioridade(tipo);
             }
+            definirPrioridade(tipo) {
+                switch (tipo) {
+                    case "Preferencial": return 1;
+                    case "Idoso": return 2;
+                    case "Estudante": return 3;
+                    default: return 4; 
+                }
+    }
             // Obtém o ID do cliente
             toString() {
                 return `Cliente #${this.id} (${this.tipo})`;
@@ -290,6 +299,12 @@
             // Adiciona um cliente à fila do guichê
             adicionarCliente(cliente) {
                 this.fila.push(cliente);
+                this.fila.sort((a, b) => {
+                    if (a.prioridade !== b.prioridade) {
+                        return a.prioridade - b.prioridade;
+                    }
+                    return a.horaChegada - b.horaChegada;
+                });
             }
             // Atende o próximo cliente na fila
             atenderProximoCliente() {
@@ -493,8 +508,8 @@
             const statusBadge = document.getElementById(`status-${guiche.id}`);
             const countSpan = document.getElementById(`count-${guiche.id}`);
             const filaContainer = document.getElementById(`fila-${guiche.id}`);
-            
-            // Atualiza status
+
+            // Atualiza status visual do guichê
             if (guiche.estaAtivo()) {
                 guicheCard.className = 'card guiche-card guiche-ativo';
                 statusBadge.className = 'badge bg-success ms-2';
@@ -504,12 +519,13 @@
                 statusBadge.className = 'badge bg-danger ms-2';
                 statusBadge.textContent = 'Em Pausa';
             }
-            
-            // Atualiza contador
+
+            // Atualiza número de clientes na fila
             countSpan.textContent = guiche.tamanhoFila();
-            
-            // Atualiza fila de clientes
-            const clientes = guiche.obterTodosClientes();
+
+            // Atualiza visual da fila
+            const clientes = guiche.obterTodosClientes(); // já vem ordenado com base em prioridade e chegada
+
             if (clientes.length === 0) {
                 filaContainer.innerHTML = `
                     <div class="text-center text-muted py-3">
@@ -518,14 +534,19 @@
                     </div>
                 `;
             } else {
-                filaContainer.innerHTML = clientes.map(cliente => `
-                    <div class="cliente-item cliente-${cliente.tipo.toLowerCase()}">
+                filaContainer.innerHTML = ''; // limpa conteúdo anterior
+                for (const cliente of clientes) {
+                    const clienteItem = document.createElement('div');
+                    clienteItem.className = `cliente-item cliente-${cliente.tipo.toLowerCase()}`;
+                    clienteItem.innerHTML = `
                         <span><i class="bi bi-person"></i> Cliente #${cliente.id}</span>
                         <span class="badge bg-light text-dark">${cliente.tipo}</span>
-                    </div>
-                `).join('');
+                    `;
+                    filaContainer.appendChild(clienteItem);
+                }
             }
         }
+
 
         // Adiciona uma mensagem ao log
         function adicionarLog(mensagem) {
